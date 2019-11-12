@@ -10,7 +10,7 @@ knitr::opts_chunk$set(
   collapse=TRUE,
   out.width='100%',
   fig.path = "img/",
-  eval = F
+  eval = T
 )
 ```
 
@@ -86,8 +86,8 @@ Toma nota de tu pregunta asignada aleatoriamente. Cada pregunta tiene varias pos
 * Carga el paquete `sf` y la colección `tidyverse`.
 
 ```{r}
-library(...)
-library(...)
+library(sf)
+library(tidyverse)
 ```
 
 ## Datos y unión
@@ -97,61 +97,61 @@ El objetivo de esta sección es que puedas unir dos fuentes: el objeto espacial 
 * Carga el conjunto de datos de "ENHOGAR 2017", asignándolo al objeto `en17`. Este conjunto de datos está guardado como archivo `.csv` en la carpeta `data` (único de su tipo en la carpeta).
 
 ```{r}
-... <- read.csv('...', check.names = F)
+en17 <- read.csv('data/enhogar_2017.csv', check.names = F)
 ```
 >El argumento `check.names = F` hace que la función `read.csv` respete los espacios y caracteres especiales en los nombres de columnas.
 
 * Carga la capa de provincias con la función `st_read`, asignándola al objeto `prov`.
 
 ```{r}
-... <- st_read(dsn = '...', layer = '...')
+prov <- st_read(dsn = 'data/divisionRD.gpkg', layer = 'PROVCenso2010')
 ```
 
 * Imprime los nombres de columnas de `en17` (recuerda, el nombre de un objeto en R no se rodea de comillas; las comillas sólo se usan para cadenas de caracteres)
 
 ```{r}
-colnames(...)
+colnames(en17)
 ```
 
 * Imprime los nombres de columnas de `prov`
 
 ```{r}
-colnames(...)
+colnames(prov)
 ```
 
 * Las columnas a través de las cuales se pueden unir ambos conjuntos son `en17$Código` y `prov$ENLACE`. Sin embargo, al igual que ocurría con los datos del censo en el material de apoyo, la columna `en17$Código` no conserva los ceros a la izquierda. En este caso, dicha omisión ocurre en los códigos con 3 caracteres (los que tienen 4 caracteres están correctos). Visualiza ambas columnas para que notes la discrepancia.
 
 ```{r}
-en17$...
-prov$...
+en17$Código
+prov$ENLACE
 ```
 
 * Si intentaras hacer una unión, no daría resultados apropiados. Para comprobarlo que dicha unión fallaría, utiliza la función `match`.
 
 ```{r}
-match(en17$... , prov$...)
+match(en17$Código , prov$ENLACE)
 ```
 
 
 * Para resolver esta discrepancia, crea una columna en el objeto `en17`, mediante la cual unirás este objeto con `prov`. Es preferible que las columnas con las que se realizará la unión tengan el mismo nombre. El objeto `prov` ya tiene una columna `ENLACE` con códigos correctos, razón por la cual crearás una columna denominada `ENLACE` en `en17`, corrigiendo al mismo tiempo los ceros a la izquierda faltantes. Una forma de las formas más cómodas de resolverlo es con la función `mutate`, creando una columna nueva a partir de la columna `Código`. Para que la nueva columna contenga los ceros a la izquierda faltantes, utiliza la función de condición `ifelse`. Utiliza el material de apoyo como referencia.
 
 ```{r}
-... <- ... %>% mutate(... = ifelse(nchar(...)==3, paste0('0', ...), ...))
+en17 <- en17 %>% mutate(ENLACE = ifelse(nchar(Código)==3, paste0('0',Código ), Código))
 ```
 
 * Imprime en pantalla la columna `ENLACE` creada en `en17`, e intenta ahora el `match` entre ambas columnas `ENLACE` de los dos objetos, `en17` y `prov`. Si tras ejecutar el `match` no aparecen `NA`, entonces la unión puede realizarse sin problemas.
 
 ```{r}
-en17$...
-match(en17$... , prov$...)
+en17$ENLACE
+match(en17$ENLACE , prov$ENLACE)
 ```
 
 * Ahora haz la unión entre los conjuntos de datos `en17` y `prov` mediante la función `inner_join` usando el campo `ENLACE`, el cual existe en ambos objetos de manera consistente, siempre que hayas ejecutado bien los códigos anteriores. Asigna el resultado al objeto `proven17`, e imprímelo en pantalla.
 
 
 ```{r}
-... <- ... %>% inner_join(..., by = '...')
-...
+proven17 <- prov %>% inner_join(en17, by = 'ENLACE')
+class(proven17)
 ```
 
 * Genera un mapa con los resultados de tu pregunta para todo el país, usando la función `plot`.
@@ -167,8 +167,8 @@ proven17 %>%
 __Tu turno__
 
 ```{r}
-... %>%
-  dplyr::select(contains('...')) %>%
+proven17 %>%
+  dplyr::select(contains('Desde noviembre del año pasado a la fecha ¿Alguna de las personas de este hogar fue atropellada por un vehículo, motor o bicicleta mientras caminaba o estaba parada en un lugar?')) %>%
   plot(breaks = 'jenks')
 ```
 
@@ -177,7 +177,7 @@ __Tu turno__
 > El ejemplo del estudiante `hoyod` ilustra cómo hacerlo. Observa tres detalles:
 
 >   * La paleta utilizada es `brewer.pal` del paquete `RColorBrewer`, define gradientes apropiados para la representación. Si escribe en la consola `RColorBrewer::display.brewer.all()`, se desplegarán todas las posibles paletas del paquete.
->   * Puedes definir el tamaño de la letra de los mapas. En el ejemplo, verás que se configuran dos tipos de letra mediante `size`: 1) La letra de los títulos de cada gráfico y la leyenda, en `theme(text = element_text(size = X))`; 2) Los rótulos de mapa en `geom_sf_text(..., size = X)`.
+>   * Puedes definir el tamaño de la letra de los mapas. En el ejemplo, verás que se configuran dos tipos de letra mediante `size`: 1) La letra de los títulos de cada gráfico y la leyenda, en `theme(text = element_text(size = X))`; 2) Los rótulos de mapa en `geom_sf_text(size, size = X)`.
 >   * La tabla de visulización de colores para el relleno usa escala logarítmica, y la define el argumento `trans = 'log10'`. Puedes "jugar" quitando dicho argumento, y notarás que los patrones se esconden, o que las provincias que destacan son sólo aquellas con valores extremos.
 
 ```{r, eval=F}
@@ -204,22 +204,22 @@ __Tu turno__
 
 ```{r}
 #Rótulos: valor de la variable
-... %>%
-  dplyr::select(contains('...')) %>%
+proven17 %>%
+  dplyr::select(contains('Desde noviembre del año pasado a la fecha ¿Alguna de las personas de este hogar fue atropellada por un vehículo, motor o bicicleta mientras caminaba o estaba parada en un lugar?')) %>%
   gather(variable, valor, -geom) %>% 
   ggplot() + aes(fill = valor) + geom_sf(lwd = 0.2) +
-  facet_wrap(~variable) + theme(text = element_text(size = 10)) +
+  facet_wrap(~variable) + theme(text = element_text(size = 12)) +
   scale_fill_gradientn(colours = RColorBrewer::brewer.pal(9, name = 'Reds'), trans = 'log10') +
-  geom_sf_text(aes(label=valor), check_overlap = T, size = 3)
+  geom_sf_text(aes(label=valor), check_overlap = T, size = 4)
 
 #Rótulos: nombres de las provincias
-... %>%
-  dplyr::select(contains('...'), TOPONIMIA) %>%
+proven17%>%
+  dplyr::select(contains('Desde noviembre del año pasado a la fecha ¿Alguna de las personas de este hogar fue atropellada por un vehículo, motor o bicicleta mientras caminaba o estaba parada en un lugar?'), TOPONIMIA) %>%
   gather(variable, valor, -geom, -TOPONIMIA) %>% 
   ggplot() + aes(fill = valor) + geom_sf(lwd = 0.2) +
-  facet_wrap(~variable) + theme(text = element_text(size = 10)) +
+  facet_wrap(~variable) + theme(text = element_text(size = 8)) +
   scale_fill_gradientn(colours = RColorBrewer::brewer.pal(9, name = 'Reds'), trans = 'log10') +
-  geom_sf_text(aes(label=TOPONIMIA), check_overlap = T, size = 3)
+  geom_sf_text(aes(label=TOPONIMIA), check_overlap = T, size = 4)
 
 ```
 
@@ -235,8 +235,8 @@ proven17 %>% st_drop_geometry() %>%
 __Tu turno__
 
 ```{r}
-... %>% st_drop_geometry() %>%
-  dplyr::select(TOPONIMIA, contains('...'))
+proven17 %>% st_drop_geometry() %>%
+  dplyr::select(TOPONIMIA, contains('Desde noviembre del año pasado a la fecha ¿Alguna de las personas de este hogar fue atropellada por un vehículo, motor o bicicleta mientras caminaba o estaba parada en un lugar?'))
 ```
 
 * Imprime una tabla, sin columna geométrica, mostrando los porcentajes de cada respuesta a tu pregunta para todo el país, incluyendo la columna `TOPONIMIA` y relativizando las respuestas para cada provincia.
@@ -254,8 +254,8 @@ proven17 %>% st_drop_geometry() %>%
 __Tu turno__
 
 ```{r}
-... %>% st_drop_geometry() %>%
-  dplyr::select(TOPONIMIA, contains('...')) %>% 
+proven17%>% st_drop_geometry() %>%
+  dplyr::select(TOPONIMIA, contains('Desde noviembre del año pasado a la fecha ¿Alguna de las personas de este hogar fue atropellada por un vehículo, motor o bicicleta mientras caminaba o estaba parada en un lugar?')) %>% 
   gather(variable, valor, -TOPONIMIA) %>% group_by(TOPONIMIA) %>%
   mutate(pct=round(valor/sum(valor)*100,2)) %>% dplyr::select(-valor) %>%
   spread(variable, pct) %>% kableExtra::kable()
@@ -280,8 +280,8 @@ proven17 %>%
 __Tu turno__
 
 ```{r}
-... %>%
-  dplyr::select(contains('...'), TOPONIMIA) %>%
+proven17 %>%
+  dplyr::select(contains('Desde noviembre del año pasado a la fecha ¿Alguna de las personas de este hogar fue atropellada por un vehículo, motor o bicicleta mientras caminaba o estaba parada en un lugar?'), TOPONIMIA) %>%
   gather(variable, valor, -geom, -TOPONIMIA) %>% 
   group_by(TOPONIMIA) %>% 
   mutate(pct=round(valor/sum(valor)*100,2)) %>% dplyr::select(-valor) %>% 
@@ -312,16 +312,17 @@ proven17 %>%
 __Tu turno__
 
 ```{r}
-... %>%
-  dplyr::select(contains('...'), TOPONIMIA) %>%
+proven17 %>%
+ dplyr::select(contains('Desde noviembre del año pasado a la fecha ¿Alguna de las personas de este hogar fue atropellada por un vehículo, motor o bicicleta mientras caminaba o estaba parada en un lugar?'), TOPONIMIA) %>%
   gather(variable, valor, -geom, -TOPONIMIA) %>% 
   group_by(TOPONIMIA) %>% 
   mutate(pct=round(valor/sum(valor)*100,2)) %>% dplyr::select(-valor) %>% 
-  filter(variable %in% '...') %>% 
+  filter(variable %in% 'Desde noviembre del año pasado a la fecha ¿Alguna de las personas de este hogar fue atropellada por un vehículo, motor o bicicleta mientras caminaba o estaba parada en un lugar?: Si') %>% 
   ggplot() + aes(fill = pct) + geom_sf(lwd = 0.2) +
   facet_wrap(~variable) + theme(text = element_text(size = 10)) +
   scale_fill_gradientn(colours = RColorBrewer::brewer.pal(9, name = 'Reds')) +
   geom_sf_text(aes(label=pct), check_overlap = T, size = 3)
+
 ```
 
 * Imprime un resumen estadístico (mínimo, primer cuartil, mediana, media, tercer cuartil, máximo) de las respuestas a tu pregunta para todo el país.
@@ -337,8 +338,8 @@ proven17 %>% st_drop_geometry() %>%
 __Tu turno__
 
 ```{r}
-... %>% st_drop_geometry() %>%
-  dplyr::select(contains('...')) %>% 
+proven17  %>% st_drop_geometry() %>%
+  dplyr::select(contains('Desde noviembre del año pasado a la fecha ¿Alguna de las personas de este hogar fue atropellada por un vehículo, motor o bicicleta mientras caminaba o estaba parada en un lugar?')) %>% 
   summary
 ```
 
@@ -357,10 +358,10 @@ proven17 %>% st_drop_geometry() %>%
 __Tu turno__ (Tip: edita el argumento `bins` dentro de la función `geom_histogram` para adaptarlo a tus datos)
 
 ```{r}
-... %>% st_drop_geometry() %>%
-  dplyr::select(contains('...')) %>%
+proven17 %>% st_drop_geometry() %>%
+  dplyr::select(contains('Desde noviembre del año pasado a la fecha ¿Alguna de las personas de este hogar fue atropellada por un vehículo, motor o bicicleta mientras caminaba o estaba parada en un lugar?')) %>%
   select_if(is.numeric) %>%  gather(variable, valor) %>%
-  ggplot + aes(x=valor) %>% geom_histogram(bins=10) +
+  ggplot + aes(x=valor) %>% geom_histogram(bins=8) +
   scale_x_continuous(trans = 'log1p') + facet_grid(~variable)
 ```
 
@@ -379,8 +380,8 @@ proven17 %>% st_drop_geometry() %>%
 __Tu turno__  (Tip: edita el argumento `bins` dentro de la función `geom_histogram` para adaptarlo a tus datos)
 
 ```{r}
-... %>% st_drop_geometry() %>%
-  dplyr::select(contains('...')) %>%
+proven17 %>% st_drop_geometry() %>%
+  dplyr::select(contains('Desde noviembre del año pasado a la fecha ¿Alguna de las personas de este hogar fue atropellada por un vehículo, motor o bicicleta mientras caminaba o estaba parada en un lugar?')) %>%
   select_if(is.numeric) %>%  gather(variable, valor) %>%
   ggplot + aes(x=valor) %>% geom_histogram(bins=10) +
   scale_x_continuous(trans = 'log1p') + facet_grid(~variable)
@@ -414,22 +415,23 @@ __Tu turno__
 
 ```{r}
 #Barras una al lado de la otra (position = 'dodge')
-... %>%
+proven17 %>%
   st_drop_geometry() %>%
-  dplyr::select(contains('...'), TOPONIMIA) %>%
+  dplyr::select(contains('Desde noviembre del año pasado a la fecha ¿Alguna de las personas de este hogar fue atropellada por un vehículo, motor o bicicleta mientras caminaba o estaba parada en un lugar?'), TOPONIMIA) %>%
   gather(variable, valor, -TOPONIMIA) %>%
   ggplot() + aes(x = TOPONIMIA, y = valor, fill = variable, group = variable) +
   geom_col(position = 'dodge') + scale_y_continuous() +
-  theme(axis.text.x = element_text(angle = 90), text = element_text(size = 12))  + coord_flip()
-
+  theme(axis.text.x = element_text(angle = 90), text = element_text(size = 8))  + coord_flip()
+```
 #Barras apiladas (position = 'fill')
-... %>%
+proven17 %>%
   st_drop_geometry() %>%
-  dplyr::select(contains('...'), TOPONIMIA) %>%
+  dplyr::select(contains('Desde noviembre del año pasado a la fecha ¿Alguna de las personas de este hogar fue atropellada por un vehículo, motor o bicicleta mientras caminaba o estaba parada en un lugar?'), TOPONIMIA) %>%
   gather(variable, valor, -TOPONIMIA) %>%
   ggplot() + aes(x = TOPONIMIA, y = valor, fill = variable, group = variable) +
   geom_col(position = 'fill') + scale_y_continuous() +
-  theme(axis.text.x = element_text(angle = 90), text = element_text(size = 12))  + coord_flip()
+  theme(axis.text.x = element_text(angle = 90), text = element_text(size = 8)) + coord_flip()
+
 ```
 
 * Ahora genera una tabla que muestre las respuestas a tu pregunta en tu provincia asignada:
@@ -444,6 +446,6 @@ proven17 %>% st_drop_geometry() %>% filter(ENLACE=='0616') %>%
 __Tu turno__
 
 ```{r}
-... %>% st_drop_geometry() %>% filter(ENLACE=='...') %>% 
-  dplyr::select(contains('...'))
+proven17 %>% st_drop_geometry() %>% filter(ENLACE=='0604') %>% 
+  dplyr::select(contains('Desde noviembre del año pasado a la fecha ¿Alguna de las personas de este hogar fue atropellada por un vehículo, motor o bicicleta mientras caminaba o estaba parada en un lugar?'))
 ```
